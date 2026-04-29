@@ -1,1 +1,1 @@
-python signalbot.py
+python3 signalbot.py
