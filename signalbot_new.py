@@ -661,34 +661,48 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         await context.bot.send_message(chat_id=ref_id, text="🎉 3 реферала! Вам активированы 7 дней Premium!")
                     except:
                         pass
+    lang = get_user_lang(user_id)
     if is_new and not u["trial_used"]:
         activate_trial(user_id)
-        await update.message.reply_text(
-            f"👋 Привет, {name}! Добро пожаловать в SignalBot!\n\n"
-            f"🎁 Тебе активирован бесплатный пробный период на {TRIAL_DAYS} день!\n"
-            f"Попробуй все функции Premium прямо сейчас 🚀",
-            reply_markup=MAIN_KEYBOARD
-        )
+        if lang == "en":
+            msg = (f"👋 Hello, {name}! Welcome to SignalBot!\n\n"
+                   f"🎁 Free trial activated for {TRIAL_DAYS} day!\n"
+                   f"Try all Premium features now 🚀")
+        else:
+            msg = (f"👋 Привет, {name}! Добро пожаловать в SignalBot!\n\n"
+                   f"🎁 Тебе активирован бесплатный пробный период на {TRIAL_DAYS} день!\n"
+                   f"Попробуй все функции Premium прямо сейчас 🚀")
+        await update.message.reply_text(msg, reply_markup=MAIN_KEYBOARD)
     else:
         premium = is_premium(user_id)
         u = get_user(user_id)
-        status = "⭐ Premium" if premium else f"🆓 Бесплатный ({3 - u['requests_today']}/3 запросов)"
-        await update.message.reply_text(
-            f"👋 Привет, {name}!\n\n"
-            f"🤖 Я SignalBot — ваш ИИ-трейдер 24/7\n\n"
-            f"📊 Статус: {status}\n\n"
-            f"Используй кнопки ниже 👇",
-            reply_markup=MAIN_KEYBOARD
-        )
+        if lang == "en":
+            status = "⭐ Premium" if premium else f"🆓 Free ({3 - u['requests_today']}/3 requests left)"
+            msg = (f"👋 Hello, {name}!\n\n"
+                   f"🤖 I'm SignalBot — your AI trader 24/7\n\n"
+                   f"📊 Status: {status}\n\n"
+                   f"Use the buttons below 👇\n"
+                   f"🌐 /lang — switch language")
+        else:
+            status = "⭐ Premium" if premium else f"🆓 Бесплатный ({3 - u['requests_today']}/3 запросов)"
+            msg = (f"👋 Привет, {name}!\n\n"
+                   f"🤖 Я SignalBot — ваш ИИ-трейдер 24/7\n\n"
+                   f"📊 Статус: {status}\n\n"
+                   f"Используй кнопки ниже 👇")
+        await update.message.reply_text(msg, reply_markup=MAIN_KEYBOARD)
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
+    user_id = update.effective_user.id
+    lang = get_user_lang(user_id)
     if text == "📊 Цены":
         keyboard = [[InlineKeyboardButton(coin, callback_data=f"price_{coin}")] for coin in COINS]
-        await update.message.reply_text("Выбери монету:", reply_markup=InlineKeyboardMarkup(keyboard))
+        label = "Choose a coin:" if lang == "en" else "Выбери монету:"
+        await update.message.reply_text(label, reply_markup=InlineKeyboardMarkup(keyboard))
     elif text == "🤖 Сигнал":
         keyboard = [[InlineKeyboardButton(coin, callback_data=f"signal_{coin}")] for coin in COINS]
-        await update.message.reply_text("Выбери монету для сигнала:", reply_markup=InlineKeyboardMarkup(keyboard))
+        label = "Choose a coin for signal:" if lang == "en" else "Выбери монету для сигнала:"
+        await update.message.reply_text(label, reply_markup=InlineKeyboardMarkup(keyboard))
     elif text == "📰 Новости":
         await news_cmd(update, context)
     elif text == "🗞 Крипто новости":
@@ -747,13 +761,30 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Формат: /compare BTC ETH")
     elif text == "🎯 Расш. сигнал":
         keyboard = [[InlineKeyboardButton(coin, callback_data=f"asignal_{coin}")] for coin in COINS]
-        await update.message.reply_text("Выбери монету:", reply_markup=InlineKeyboardMarkup(keyboard))
+        label = "Choose a coin:" if lang == "en" else "Выбери монету:"
+        await update.message.reply_text(label, reply_markup=InlineKeyboardMarkup(keyboard))
     elif text == "📅 Дневник":
         await diary_cmd(update, context)
     elif text == "🏆 Лидерборд":
         await leaderboard_cmd(update, context)
     elif text == "🌐 Язык":
         await lang_cmd(update, context)
+    elif text == "🔔 RSI/MACD алерты":
+        if lang == "en":
+            msg = ("🔔 RSI/MACD Alerts\n\n"
+                   "Set an alert when indicator hits a level:\n\n"
+                   "/ialert BTC RSI 30 — alert when RSI ≤ 30\n"
+                   "/ialert BTC RSI 70 above — alert when RSI ≥ 70\n"
+                   "/ialert ETH MACD cross — alert on MACD crossover\n\n"
+                   "⚠️ Premium only")
+        else:
+            msg = ("🔔 RSI/MACD Алерты\n\n"
+                   "Установи алерт когда индикатор достигнет уровня:\n\n"
+                   "/ialert BTC RSI 30 — когда RSI ≤ 30\n"
+                   "/ialert BTC RSI 70 above — когда RSI ≥ 70\n"
+                   "/ialert ETH MACD cross — на пересечение MACD\n\n"
+                   "⚠️ Только для Premium")
+        await update.message.reply_text(msg)
 
 async def calc_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) < 4:
@@ -1801,7 +1832,28 @@ async def lang_cmd(update, context):
     user_id = update.effective_user.id
     new_lang = "en" if get_user_lang(user_id) == "ru" else "ru"
     set_user_lang(user_id, new_lang)
-    await update.message.reply_text("🌐 Language changed to English 🇬🇧" if new_lang == "en" else "🌐 Язык изменён на Русский 🇷🇺")
+    if new_lang == "en":
+        await update.message.reply_text(
+            "🌐 Language changed to English 🇬🇧\n\n"
+            "Use these commands:\n"
+            "/asignal BTC 4h — advanced signal\n"
+            "/backtest BTC — signal backtest\n"
+            "/ialert BTC RSI 30 — set RSI/MACD alert\n"
+            "/diary — trade diary\n"
+            "/leaderboard — top traders\n"
+            "/lang — switch back to Russian"
+        )
+    else:
+        await update.message.reply_text(
+            "🌐 Язык изменён на Русский 🇷🇺\n\n"
+            "Используй команды:\n"
+            "/asignal BTC 4h — расш. сигнал\n"
+            "/backtest BTC — бэктест\n"
+            "/ialert BTC RSI 30 — RSI/MACD алерт\n"
+            "/diary — дневник сделок\n"
+            "/leaderboard — лидерборд\n"
+            "/lang — сменить язык на EN"
+        )
 
 def main():
     init_db()
